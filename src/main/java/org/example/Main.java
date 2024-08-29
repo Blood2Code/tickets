@@ -12,11 +12,15 @@ import java.util.*;
 public class Main {
 
     static class Ticket {
+        String origin;
+        String destination;
         String carrier;
         Long flightTimeMinutes;
         Integer price;
 
-        Ticket(String carrier, long flightTimeMinutes, int price) {
+        Ticket(String origin, String destination, String carrier, long flightTimeMinutes, int price) {
+            this.origin = origin;
+            this.destination = destination;
             this.carrier = carrier;
             this.flightTimeMinutes = flightTimeMinutes;
             this.price = price;
@@ -27,7 +31,6 @@ public class Main {
         List<Ticket> tickets = new ArrayList<>();
         ObjectMapper mapper = new ObjectMapper();
 
-        // Accessing the resource as an InputStream
         InputStream resourceStream = Main.class.getClassLoader().getResourceAsStream("tickets.json");
         if (resourceStream == null) {
             throw new IllegalArgumentException("File not found!");
@@ -52,7 +55,7 @@ public class Main {
 
                 long flightTimeMinutes = (arrivalTime.getTime() - departureTime.getTime()) / (60 * 1000);
 
-                tickets.add(new Ticket(carrier, flightTimeMinutes, price));
+                tickets.add(new Ticket(origin, destination, carrier, flightTimeMinutes, price));
             }
         }
 
@@ -60,44 +63,35 @@ public class Main {
     }
 
     private static void calculateAndPrintResults(List<Ticket> tickets) {
-        Map<String, List<Ticket>> ticketsByCarrier = new HashMap<>();
+        long minFlightTime = tickets.stream()
+                .mapToLong(t -> t.flightTimeMinutes)
+                .min()
+                .orElse(0);
 
-        for (Ticket ticket : tickets) {
-            ticketsByCarrier.computeIfAbsent(ticket.carrier, k -> new ArrayList<>()).add(ticket);
+        double avgPrice = tickets.stream()
+                .mapToInt(t -> t.price)
+                .average()
+                .orElse(0);
+
+        List<Integer> prices = tickets.stream()
+                .map(t -> t.price)
+                .sorted()
+                .toList();
+
+        double medianPrice;
+        int size = prices.size();
+        if (size % 2 == 0) {
+            medianPrice = (prices.get(size / 2 - 1) + prices.get(size / 2)) / 2.0;
+        } else {
+            medianPrice = prices.get(size / 2);
         }
 
-        for (Map.Entry<String, List<Ticket>> entry : ticketsByCarrier.entrySet()) {
-            String carrier = entry.getKey();
-            List<Ticket> carrierTickets = entry.getValue();
+        double priceDifference = avgPrice - medianPrice;
 
-            long minFlightTime = carrierTickets.stream()
-                    .mapToLong(t -> t.flightTimeMinutes)
-                    .min()
-                    .orElse(0);
-
-            double avgPrice = carrierTickets.stream()
-                    .mapToInt(t -> t.price)
-                    .average()
-                    .orElse(0);
-
-            List<Integer> prices = carrierTickets.stream()
-                    .map(t -> t.price)
-                    .sorted()
-                    .toList();
-
-            double medianPrice;
-            int size = prices.size();
-            if (size % 2 == 0) {
-                medianPrice = (prices.get(size / 2 - 1) + prices.get(size / 2)) / 2.0;
-            } else {
-                medianPrice = prices.get(size / 2);
-            }
-
-            double priceDifference = avgPrice - medianPrice;
-
-            System.out.printf("Перевозчик: %s%n", carrier);
-            System.out.printf("Минимальное время полета: %d минут%n", minFlightTime);
-            System.out.printf("Разница в цене (средняя - медиана): %.2f%n%n", priceDifference);
-        }
+        System.out.printf("Маршрут: Владивосток - Тель-Авив%n");
+        System.out.printf("Минимальное время полета: %d минут%n", minFlightTime);
+        System.out.printf("Средняя цена: %.2f%n", avgPrice);
+        System.out.printf("Медианная цена: %.2f%n", medianPrice);
+        System.out.printf("Разница в цене (средняя - медиана): %.2f%n", priceDifference);
     }
 }
